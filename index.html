@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Simulator Control Plane</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="bg-grid"></div>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-dot"></div>
+        <div>
+          <h1>Simulator</h1>
+          <p>Control Plane</p>
+        </div>
+      </div>
+
+      <nav class="nav" id="nav"></nav>
+
+      <div class="sidebar-foot">
+        <button class="btn btn-secondary" id="nav-settings">Settings</button>
+        <p class="muted mono">Theme: Blue Core</p>
+      </div>
+    </aside>
+
+    <main class="content">
+      <header class="topbar card">
+        <div class="topbar-title">
+          <h2 id="section-title">Overview</h2>
+          <p id="section-subtitle">Simulator run and test intelligence</p>
+        </div>
+        <div class="topbar-actions row">
+          <span id="role-pill" class="status-pill idle">Role: unknown</span>
+          <button class="btn btn-secondary" id="refresh-all">Refresh</button>
+          <button class="btn btn-secondary" id="logout-btn">Logout</button>
+        </div>
+      </header>
+
+      <section id="view"></section>
+    </main>
+  </div>
+
+  <template id="overview-template">
+    <div class="grid cols-2">
+      <div class="card stack">
+        <div class="row row-space">
+          <h3>Logical Tests</h3>
+          <span id="sql-overall-status" class="status-pill idle">Status: idle</span>
+        </div>
+        <div class="grid cols-4 kpi-grid">
+          <article class="card kpi"><p>Total</p><h4 id="sql-kpi-total">-</h4></article>
+          <article class="card kpi"><p>Pending</p><h4 id="sql-kpi-pending">-</h4></article>
+          <article class="card kpi"><p>Passed</p><h4 id="sql-kpi-passed">-</h4></article>
+          <article class="card kpi"><p>Failed</p><h4 id="sql-kpi-failed">-</h4></article>
+        </div>
+        <div class="execution-summary-card overview-summary">
+          <p class="execution-summary-label">Latest Completion Summary</p>
+          <h4 id="sql-run-summary">No logical run completed yet.</h4>
+        </div>
+        <div class="row">
+          <button class="btn" id="btn-run-sql-auto">Run Logical Suite</button>
+          <button class="btn btn-danger" id="btn-stop-sql-auto">Stop</button>
+          <button class="btn btn-secondary" id="btn-process-sql-batch">Process 1 Logical Test</button>
+          <button class="btn btn-danger" id="btn-reset-sql">Reset Logical Work</button>
+        </div>
+      </div>
+
+      <div class="card stack">
+        <div class="row row-space">
+          <h3>Gateway Tests</h3>
+          <span id="gateway-overall-status" class="status-pill idle">Status: idle</span>
+        </div>
+        <div class="grid cols-4 kpi-grid">
+          <article class="card kpi"><p>Total</p><h4 id="gateway-kpi-total">-</h4></article>
+          <article class="card kpi"><p>Pending</p><h4 id="gateway-kpi-pending">-</h4></article>
+          <article class="card kpi"><p>Passed</p><h4 id="gateway-kpi-passed">-</h4></article>
+          <article class="card kpi"><p>Failed</p><h4 id="gateway-kpi-failed">-</h4></article>
+        </div>
+        <div class="execution-summary-card overview-summary">
+          <p class="execution-summary-label">Latest Completion Summary</p>
+          <h4 id="gateway-run-summary">No gateway suite completed yet.</h4>
+        </div>
+        <div class="row">
+          <button class="btn" id="btn-run-gateway-auto">Run Gateway Suite</button>
+          <button class="btn btn-danger" id="btn-stop-gateway-auto">Stop</button>
+          <button class="btn btn-secondary" id="btn-process-gateway-job">Process Next Gateway Job</button>
+          <button class="btn btn-danger" id="btn-reset-gateway">Reset Gateway Work</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <h3>Recent Logical Runs</h3>
+      <p class="muted mono">This table now tracks the SQL-only execution lane for the selected source.</p>
+      <div class="table-wrap"><table id="tbl-runs"></table></div>
+    </div>
+  </template>
+
+  <template id="docs-template">
+    <div class="card stack">
+      <div class="row row-space">
+        <div>
+          <h3>Simulator Documentation</h3>
+          <p class="muted mono">Read this first if you need to understand how tests run, where to inspect failures, and how fixture-backed gateway cases differ from plain cases.</p>
+        </div>
+      </div>
+      <div class="tab-strip">
+        <button class="tab-btn docs-tab-btn active" data-docs-tab="overview">System Map</button>
+        <button class="tab-btn docs-tab-btn" data-docs-tab="logical">Logical Tests</button>
+        <button class="tab-btn docs-tab-btn" data-docs-tab="gateway">Gateway Tests</button>
+        <button class="tab-btn docs-tab-btn" data-docs-tab="fixtures">Fixture Flow</button>
+        <button class="tab-btn docs-tab-btn" data-docs-tab="debugging">Debugging Guide</button>
+      </div>
+    </div>
+
+    <div id="docs-overview" class="docs-section stack">
+      <div class="card stack">
+        <h3>1. System Map</h3>
+        <p>The simulator has two execution lanes. Logical tests run SQL scripts inside the main-project rollback sandbox. Gateway tests hit the real gateway contracts that the frontend uses. That split is the core debugging model.</p>
+        <pre class="codebox docs-diagram">Logical Test
+  Simulator -> SQL script metadata -> main-project sandbox -> assertion -> rollback
+
+Gateway Test
+  Simulator -> gateway config/thread -> main project -> result capture
+           -> if fixture-backed: seed -> confirm -> execute -> cleanup</pre>
+      </div>
+      <div class="grid cols-2">
+        <div class="card stack">
+          <h3>Logical Lane</h3>
+          <p>Use this when validating database business logic, procedures, and deterministic rule behavior without leaving residue in the main project.</p>
+        </div>
+        <div class="card stack">
+          <h3>Gateway Lane</h3>
+          <p>Use this when validating the same gateway contract that the frontend consumes. If the simulator passes and the frontend fails, the problem is usually in frontend payload shaping, config usage, or UI state handling.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="docs-logical" class="docs-section stack hidden">
+      <div class="card stack">
+        <h3>2. Logical Tests</h3>
+        <p>Logical tests are metadata-driven SQL scripts stored in the simulator catalog. They are executed through the main-project sandbox and force rollback at the end.</p>
+        <ol class="docs-list">
+          <li>Read coverage under <strong>Permanent Tests</strong>.</li>
+          <li>Run the suite from <strong>Overview → Logical Tests</strong>.</li>
+          <li>Inspect per-test outcomes in <strong>Logical Run Details</strong>.</li>
+          <li>If a test fails, read the stored payload and SQL assertion trace before changing code.</li>
+        </ol>
+        <pre class="codebox docs-diagram">Primary screens
+  Overview            -> operator summary
+  Permanent Tests     -> catalog and SQL script preview
+  Logical Run Details -> pass/fail/error trace per logical test</pre>
+      </div>
+    </div>
+
+    <div id="docs-gateway" class="docs-section stack hidden">
+      <div class="card stack">
+        <h3>3. Gateway Tests</h3>
+        <p>Gateway tests validate the real thread used by the frontend. The simulator and frontend should succeed or fail together if they hit the same config, role context, and payload contract.</p>
+        <ol class="docs-list">
+          <li>Read the catalog under <strong>Gateway Cases</strong>.</li>
+          <li>Use the synopsis to understand what each config is supposed to prove.</li>
+          <li>Run queue-backed execution from <strong>Overview → Gateway Tests</strong> or <strong>Settings</strong>.</li>
+          <li>Inspect suite and job detail under <strong>Gateway Runs</strong>.</li>
+        </ol>
+        <pre class="codebox docs-diagram">Gateway troubleshooting logic
+  Simulator PASS + Frontend FAIL -> frontend bug or frontend payload mismatch
+  Simulator FAIL + Frontend FAIL -> shared gateway/backend/config problem
+  Simulator FAIL before call      -> simulator metadata / fixture / role issue</pre>
+      </div>
+    </div>
+
+    <div id="docs-fixtures" class="docs-section stack hidden">
+      <div class="card stack">
+        <h3>4. Fixture-Backed Gateway Flow</h3>
+        <p>Some gateway tests need pre-seeded business rows. Those tests run through the workflow-backed fixture path. The simulator seeds data, confirms it exists, executes the real gateway test, registers the result, and then cleans the seeded rows.</p>
+        <pre class="codebox docs-diagram">Fixture-backed gateway case
+  Create suite
+    -> create workflow run
+    -> seed data in main project
+    -> confirm persisted rows
+    -> render payload placeholders
+    -> execute real gateway thread
+    -> register pass/fail
+    -> cleanup seeded rows
+    -> confirm cleanup</pre>
+        <p>Use <strong>Gateway Fixtures</strong> to understand which cases are workflow-backed, what they seed, and how cleanup is tracked.</p>
+      </div>
+    </div>
+
+    <div id="docs-debugging" class="docs-section stack hidden">
+      <div class="card stack">
+        <h3>5. Debugging Guide</h3>
+        <div class="grid cols-2">
+          <div class="card stack">
+            <h3>Where to go first</h3>
+            <ol class="docs-list">
+              <li><strong>Overview</strong>: current run state and last completion summary.</li>
+              <li><strong>Gateway Runs</strong>: suite-level and job-level gateway outcomes.</li>
+              <li><strong>Gateway Fixtures</strong>: only for seeded/workflow-backed cases.</li>
+              <li><strong>Logical Run Details</strong>: only for SQL-script failures.</li>
+            </ol>
+          </div>
+          <div class="card stack">
+            <h3>How to isolate the fault</h3>
+            <ol class="docs-list">
+              <li>If simulator and frontend both fail, investigate the shared backend thread.</li>
+              <li>If simulator passes and frontend fails, investigate frontend payloads or UI parsing.</li>
+              <li>If a fixture-backed case fails before the gateway call, inspect the fixture workflow state first.</li>
+              <li>If cleanup fails, do not rerun blindly. Inspect the fixture context and cleanup result.</li>
+            </ol>
+          </div>
+        </div>
+      </div>
+    </div>
+  </template>
+
+  <template id="tests-template">
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Permanent Tests</h3>
+        <div class="row">
+          <input id="test-search" placeholder="Search module / functionality" />
+          <select id="severity-filter">
+            <option value="">All Severity</option>
+            <option>LOW</option>
+            <option>MODERATE</option>
+            <option>HIGH</option>
+            <option>VERY HIGH</option>
+            <option>CRITICAL</option>
+          </select>
+          <button class="btn btn-secondary" id="apply-test-filter">Apply</button>
+          <button class="btn" id="btn-new-sql-test">New SQL Test</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tbl-tests"></table></div>
+      <p id="tests-meta" class="muted mono"></p>
+      <div class="row">
+        <button class="btn btn-secondary" id="tests-prev">Prev</button>
+        <button class="btn btn-secondary" id="tests-next">Next</button>
+        <span id="tests-page-info" class="muted mono"></span>
+      </div>
+    </div>
+  </template>
+
+  <template id="details-template">
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Logical Run Details</h3>
+        <div class="row">
+          <input id="detail-test-id" type="number" placeholder="Test ID" />
+          <select id="detail-status">
+            <option value="">All Status</option>
+            <option>PASS</option>
+            <option>FAIL</option>
+            <option>ERROR</option>
+          </select>
+          <select id="detail-page-size">
+            <option value="10">10 / page</option>
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+          </select>
+          <button class="btn btn-secondary" id="apply-detail-filter">Apply</button>
+        </div>
+      </div>
+      <p class="muted mono">Source: `sim_run_details`. This is the SQL-script / logical lane only. Use Gateway Runs for gateway suite, job, and fixture workflow tracking.</p>
+      <div class="table-wrap"><table id="tbl-details"></table></div>
+      <p id="details-meta" class="muted mono"></p>
+      <div class="row">
+        <button class="btn btn-secondary" id="details-prev">Prev</button>
+        <button class="btn btn-secondary" id="details-next">Next</button>
+        <span id="details-page-info" class="muted mono"></span>
+      </div>
+    </div>
+  </template>
+
+  <template id="gateway-cases-template">
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Gateway Test Cases</h3>
+        <div class="row">
+          <input id="gw-case-search" placeholder="Search functionality / target config" />
+          <select id="gw-case-role">
+            <option value="">All Roles</option>
+            <option>EMPLOYEE</option>
+            <option>MANAGER</option>
+            <option>ADMIN</option>
+            <option>SUPER_ADMIN</option>
+          </select>
+          <select id="gw-case-active">
+            <option value="">All Status</option>
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+          <button class="btn btn-secondary" id="apply-gw-case-filter">Apply</button>
+          <button class="btn" id="btn-new-gw-test">New Gateway Test</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tbl-gw-cases"></table></div>
+      <p id="gw-cases-meta" class="muted mono"></p>
+      <div class="row">
+        <button class="btn btn-secondary" id="gw-cases-prev">Prev</button>
+        <button class="btn btn-secondary" id="gw-cases-next">Next</button>
+        <span id="gw-cases-page-info" class="muted mono"></span>
+      </div>
+    </div>
+  </template>
+
+  <template id="gateway-runs-template">
+    <div class="grid cols-4 kpi-grid">
+      <article class="card kpi"><p>Total Runs</p><h4 id="gw-kpi-runs">-</h4></article>
+      <article class="card kpi"><p>Latest Total</p><h4 id="gw-kpi-total">-</h4></article>
+      <article class="card kpi"><p>Latest Passed</p><h4 id="gw-kpi-passed">-</h4></article>
+      <article class="card kpi"><p>Latest Failed</p><h4 id="gw-kpi-failed">-</h4></article>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Gateway Runs</h3>
+        <button class="btn btn-secondary" id="reload-gw-runs">Reload</button>
+      </div>
+      <p class="muted mono">Source of truth: queue-backed suite/job RPCs. This screen reflects gateway execution, attempts, and terminal results.</p>
+      <div class="table-wrap"><table id="tbl-gw-runs"></table></div>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Run Results</h3>
+        <div class="row">
+          <input id="gw-result-run-id" placeholder="Run ID (default: latest)" />
+          <select id="gw-result-pass-filter">
+            <option value="">All</option>
+            <option value="true">Passed</option>
+            <option value="false">Failed</option>
+          </select>
+          <select id="gw-result-page-size">
+            <option value="10">10 / page</option>
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+          </select>
+          <button class="btn btn-secondary" id="apply-gw-result-filter">Apply</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tbl-gw-results"></table></div>
+      <p id="gw-results-meta" class="muted mono"></p>
+      <div class="row">
+        <button class="btn btn-secondary" id="gw-results-prev">Prev</button>
+        <button class="btn btn-secondary" id="gw-results-next">Next</button>
+        <span id="gw-results-page-info" class="muted mono"></span>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Job Detail</h3>
+        <span class="muted mono">Click a run-result row to inspect queue-native execution detail.</span>
+      </div>
+      <pre id="gw-job-detail" class="codebox">No gateway job selected.</pre>
+    </div>
+  </template>
+
+  <template id="gateway-fixtures-template">
+    <div class="card stack">
+      <div class="row row-space">
+        <div>
+          <h3>Gateway Fixtures</h3>
+          <p class="muted mono">View fixture plans separately from live fixture activity so seeded-case debugging stays readable.</p>
+        </div>
+        <button class="btn btn-secondary" id="reload-gw-fixtures">Reload</button>
+      </div>
+      <div class="tab-strip">
+        <button class="tab-btn active" id="tab-gw-fixture-plans">Gateway Fixture Plans</button>
+        <button class="tab-btn" id="tab-gw-fixture-runs">Fixture Run Activity</button>
+      </div>
+
+      <div id="gw-fixture-tab-plans" class="stack">
+        <p class="muted mono">Which config needs seeded data, which workflow plan is used, and what seed / cleanup SQL is expected to run.</p>
+        <div class="table-wrap"><table id="tbl-gw-fixture-defs"></table></div>
+        <p id="gw-fixture-defs-meta" class="muted mono"></p>
+        <div class="row">
+          <button class="btn btn-secondary" id="gw-fixture-defs-prev">Prev</button>
+          <button class="btn btn-secondary" id="gw-fixture-defs-next">Next</button>
+          <span id="gw-fixture-defs-page-info" class="muted mono"></span>
+        </div>
+      </div>
+
+      <div id="gw-fixture-tab-runs" class="stack hidden">
+        <p class="muted mono">Recent runtime state for seeded gateway cases.</p>
+        <div class="table-wrap"><table id="tbl-gw-workflows"></table></div>
+        <p id="gw-workflows-meta" class="muted mono"></p>
+        <div class="row">
+          <button class="btn btn-secondary" id="gw-workflows-prev">Prev</button>
+          <button class="btn btn-secondary" id="gw-workflows-next">Next</button>
+          <span id="gw-workflows-page-info" class="muted mono"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Fixture Detail</h3>
+        <span class="muted mono">Click a fixture plan or fixture run row to inspect seed, confirm, cleanup, and current context.</span>
+      </div>
+      <pre id="gw-workflow-detail" class="codebox">No fixture selected.</pre>
+    </div>
+  </template>
+
+  <template id="devops-gate-template">
+    <div class="grid cols-2">
+      <div class="card stack">
+        <div class="row row-space">
+          <h3>Gate Policy</h3>
+          <div class="row">
+            <button class="btn btn-secondary" id="devops-reload-policy">Reload Policy</button>
+            <button class="btn" id="devops-save-policy">Save Policy</button>
+          </div>
+        </div>
+        <p class="muted mono">Release gate thresholds and operational controls used when creating a DevOps gate run.</p>
+        <div class="grid cols-2">
+          <label>Execution Mode
+            <select id="devops-policy-mode">
+              <option value="GATEWAY_CONFIG">GATEWAY_CONFIG</option>
+              <option value="SQL_SCRIPT">SQL_SCRIPT</option>
+              <option value="ALL">ALL</option>
+            </select>
+          </label>
+          <label>Minimum Pass Rate (%)
+            <input id="devops-policy-pass-rate" type="number" min="0" max="100" step="0.01" value="100" />
+          </label>
+          <label>Maximum Failed Jobs
+            <input id="devops-policy-max-failed" type="number" min="0" value="0" />
+          </label>
+          <label>Maximum Dead Jobs
+            <input id="devops-policy-max-dead" type="number" min="0" value="0" />
+          </label>
+          <label>Max Suite Runtime (seconds)
+            <input id="devops-policy-runtime" type="number" min="60" value="3600" />
+          </label>
+          <label>Stale Job Minutes
+            <input id="devops-policy-stale-minutes" type="number" min="1" max="1440" value="15" />
+          </label>
+          <label>Require Zero Pending
+            <select id="devops-policy-zero-pending">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </label>
+          <label>Auto Requeue Stale Jobs
+            <select id="devops-policy-auto-requeue">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </label>
+          <label>Auto Purge Completed
+            <select id="devops-policy-auto-purge">
+              <option value="false">false</option>
+              <option value="true">true</option>
+            </select>
+          </label>
+          <label>Keep Days
+            <input id="devops-policy-keep-days" type="number" min="0" max="30" value="1" />
+          </label>
+        </div>
+        <label>Policy Metadata (JSON object)
+          <textarea id="devops-policy-metadata" rows="4" placeholder='{"owner":"qa-devops"}'></textarea>
+        </label>
+      </div>
+
+      <div class="card stack">
+        <div class="row row-space">
+          <h3>Start Gate Run</h3>
+          <button class="btn" id="devops-start-run">Start Run</button>
+        </div>
+        <p class="muted mono">Create a run, execute queue jobs using existing gateway workflow, then evaluate final gate verdict.</p>
+        <div class="grid cols-2">
+          <label>Source
+            <input id="devops-run-source" value="UI_SIMULATOR" />
+          </label>
+          <label>Module (optional)
+            <input id="devops-run-module" placeholder="LMS / AMS / EOAP" />
+          </label>
+          <label>Execution Mode Override (optional)
+            <select id="devops-run-mode">
+              <option value="">Use policy mode</option>
+              <option value="GATEWAY_CONFIG">GATEWAY_CONFIG</option>
+              <option value="SQL_SCRIPT">SQL_SCRIPT</option>
+              <option value="ALL">ALL</option>
+            </select>
+          </label>
+          <label>Release Ref (optional)
+            <input id="devops-run-release-ref" placeholder="release-2026-03-05" />
+          </label>
+        </div>
+        <label>Run Metadata (JSON object)
+          <textarea id="devops-run-metadata" rows="4" placeholder='{"initiator":"ui"}'></textarea>
+        </label>
+        <div class="row">
+          <label class="devops-inline-label">Selected Gate Run ID
+            <input id="devops-selected-gate-id" placeholder="auto from latest row click" />
+          </label>
+          <button class="btn btn-secondary" id="devops-load-selected">Load Selected</button>
+          <button class="btn btn-secondary" id="devops-refresh-selected">Refresh Verdict</button>
+        </div>
+        <pre id="devops-output" class="codebox">No DevOps gate action yet.</pre>
+      </div>
+    </div>
+
+    <div class="grid cols-4 kpi-grid">
+      <article class="card kpi"><p>Selected Status</p><h4 id="devops-kpi-status">-</h4></article>
+      <article class="card kpi"><p>Pass Rate</p><h4 id="devops-kpi-pass-rate">-</h4></article>
+      <article class="card kpi"><p>Failed / Dead</p><h4 id="devops-kpi-failed-dead">-</h4></article>
+      <article class="card kpi"><p>Pending</p><h4 id="devops-kpi-pending">-</h4></article>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Gate Run History</h3>
+        <div class="row">
+          <input id="devops-filter-module" placeholder="Module filter" />
+          <select id="devops-filter-status">
+            <option value="">All Status</option>
+            <option>PASSED</option>
+            <option>FAILED</option>
+            <option>RUNNING</option>
+            <option>CANCELLED</option>
+            <option>ERROR</option>
+          </select>
+          <select id="devops-runs-page-size">
+            <option value="10">10 / page</option>
+            <option value="25">25 / page</option>
+            <option value="50">50 / page</option>
+          </select>
+          <button class="btn btn-secondary" id="devops-apply-filter">Apply</button>
+          <button class="btn btn-secondary" id="devops-reload-runs">Reload</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tbl-devops-runs"></table></div>
+      <p id="devops-runs-meta" class="muted mono"></p>
+      <div class="row">
+        <button class="btn btn-secondary" id="devops-runs-prev">Prev</button>
+        <button class="btn btn-secondary" id="devops-runs-next">Next</button>
+        <span id="devops-runs-page-info" class="muted mono"></span>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Gate Run Detail</h3>
+        <span class="muted mono">Click any gate run row to inspect gate, suite, and checkpoint payloads.</span>
+      </div>
+      <pre id="devops-gate-detail" class="codebox">No gate run selected.</pre>
+    </div>
+  </template>
+
+  <template id="settings-template">
+    <div class="card stack" id="connection-panel">
+      <h3>Connection</h3>
+      <div class="grid cols-4">
+        <label>
+          Supabase URL
+          <input id="sb-url" placeholder="https://PROJECT.supabase.co" />
+        </label>
+        <label>
+          Publishable/Anon Key
+          <input id="sb-key" placeholder="sb_publishable_..." />
+        </label>
+        <label>
+          Source Label
+          <input id="run-source" value="UI_SIMULATOR" />
+        </label>
+        <label>
+          Batch Size
+          <input id="batch-size" type="number" min="1" max="100" value="10" />
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn" id="save-conn">Save Connection</button>
+        <button class="btn btn-secondary" id="test-conn">Ping</button>
+        <span id="conn-status" class="status-pill idle">Not connected</span>
+      </div>
+    </div>
+
+    <div class="card stack">
+      <h3>Gateway Runner</h3>
+      <div class="grid cols-4">
+        <label>
+          Module
+          <input id="gw-runner-module" value="" placeholder="ALL modules" />
+        </label>
+        <label>
+          Suite Run ID (optional)
+          <input id="gw-runner-suite-id" placeholder="Reuse existing suite" />
+        </label>
+        <label>
+          Worker ID
+          <input id="gw-runner-worker-id" placeholder="ui:settings:gateway" />
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn" id="btn-gw-runner-ensure">Ensure Suite</button>
+        <button class="btn btn-secondary" id="btn-gw-runner-next">Run Next Job</button>
+        <button class="btn btn-secondary" id="btn-gw-runner-exec">Run Entire Suite</button>
+        <button class="btn btn-secondary" id="btn-gw-runner-clear">Clear Output</button>
+      </div>
+      <pre id="gw-runner-output" class="codebox">No gateway run started.</pre>
+    </div>
+
+    <div class="card stack">
+      <div class="row row-space">
+        <h3>Failure Alert Queue</h3>
+        <div class="row">
+          <button class="btn" id="btn-force-alert-test">Force Alert Test</button>
+          <input id="retry-alert-id" type="number" placeholder="Alert Queue ID" />
+          <button class="btn btn-secondary" id="btn-retry-alert">Retry Alert</button>
+        </div>
+      </div>
+      <pre id="alert-force-output" class="codebox">No force alert run yet.</pre>
+      <div class="table-wrap"><table id="tbl-alerts"></table></div>
+    </div>
+
+    <div class="card stack">
+      <h3>Alert Recipients</h3>
+      <div class="grid cols-4">
+        <label>Name<input id="rcp-name" placeholder="Ops User" /></label>
+        <label>Email<input id="rcp-email" placeholder="ops@company.com" /></label>
+        <label>Severity Min
+          <select id="rcp-severity">
+            <option value="">ALL</option>
+            <option>LOW</option>
+            <option>MODERATE</option>
+            <option>HIGH</option>
+            <option>VERY HIGH</option>
+            <option>CRITICAL</option>
+          </select>
+        </label>
+        <label>Module Filter<input id="rcp-module" placeholder="LMS (optional)" /></label>
+      </div>
+      <div class="row">
+        <button class="btn" id="btn-save-recipient">Add Recipient</button>
+        <input id="delete-recipient-id" type="number" placeholder="Recipient ID" />
+        <button class="btn btn-danger" id="btn-delete-recipient">Delete Recipient</button>
+        <button class="btn btn-secondary" id="reload-recipients">Reload</button>
+      </div>
+      <div class="table-wrap"><table id="tbl-recipients"></table></div>
+    </div>
+
+    <div class="card stack">
+      <h3>Alert Controls</h3>
+      <div class="grid cols-4">
+        <label>Severity
+          <select id="mute-severity">
+            <option>LOW</option>
+            <option>MODERATE</option>
+            <option>HIGH</option>
+            <option>VERY HIGH</option>
+            <option>CRITICAL</option>
+          </select>
+        </label>
+        <label>Mute Until (UTC)
+          <input id="mute-until" type="datetime-local" />
+        </label>
+        <label>Reason
+          <input id="mute-reason" placeholder="maintenance window" />
+        </label>
+        <label>Action
+          <select id="mute-action">
+            <option value="mute">Mute</option>
+            <option value="unmute">Unmute</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn" id="btn-apply-mute">Apply</button>
+      </div>
+      <pre id="admin-output" class="codebox">No admin action yet.</pre>
+    </div>
+
+    <div class="card stack">
+      <h3>Current Mute Rules</h3>
+      <div class="table-wrap"><table id="tbl-mutes"></table></div>
+    </div>
+
+    <div class="card stack">
+      <h3>Simulator Maintenance</h3>
+      <div class="grid cols-4">
+        <label>Keep Days
+          <input id="maintenance-keep-days" type="number" min="0" max="30" value="1" />
+        </label>
+        <label>Stale Minutes
+          <input id="maintenance-stale-minutes" type="number" min="1" max="1440" value="15" />
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn btn-secondary" id="btn-maintenance-reload">Reload Summary</button>
+        <button class="btn btn-secondary" id="btn-requeue-gateway-jobs">Recover Stale Gateway Jobs</button>
+        <button class="btn btn-danger" id="btn-purge-sim-data">Purge Completed Test Data</button>
+      </div>
+      <pre id="maintenance-output" class="codebox">No maintenance action yet.</pre>
+    </div>
+
+    <div class="card stack">
+      <h3>Alert Cron Schedule</h3>
+      <div class="row">
+        <input id="cron-schedule" placeholder="*/2 * * * *" />
+        <select id="cron-enabled">
+          <option value="true">Enabled</option>
+          <option value="false">Disabled</option>
+        </select>
+        <button class="btn" id="btn-save-cron">Save Cron</button>
+      </div>
+      <pre id="cron-output" class="codebox">No cron update yet.</pre>
+    </div>
+
+    <div class="card stack">
+      <h3>Alert Webhook (Debounced Batch Trigger)</h3>
+      <div class="grid cols-4">
+        <label>Enabled
+          <select id="webhook-enabled">
+            <option value="true">Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+        </label>
+        <label>Endpoint URL
+          <input id="webhook-endpoint" placeholder="https://.../functions/v1/sim-alert-dispatch-worker-brevo" />
+        </label>
+        <label>Debounce Seconds
+          <input id="webhook-debounce" type="number" min="5" max="3600" value="20" />
+        </label>
+        <label>Max Batch Size
+          <input id="webhook-batch-size" type="number" min="1" max="1000" value="100" />
+        </label>
+      </div>
+      <div class="grid cols-4">
+        <label>Auth Header Name (Optional)
+          <input id="webhook-auth-name" placeholder="Authorization" />
+        </label>
+        <label>Auth Header Value (Optional)
+          <input id="webhook-auth-value" placeholder="Bearer ..." />
+        </label>
+        <label>Timeout (ms)
+          <input id="webhook-timeout" type="number" min="1000" max="30000" value="5000" />
+        </label>
+        <label>Last Fired At (UTC)
+          <input id="webhook-last-fired" readonly />
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn" id="btn-save-webhook">Save Webhook Config</button>
+        <button class="btn btn-secondary" id="btn-reload-webhook">Reload Config</button>
+        <button class="btn btn-secondary" id="btn-test-webhook">Force Webhook Trigger</button>
+      </div>
+      <pre id="webhook-output" class="codebox">No webhook action yet.</pre>
+    </div>
+
+    <div class="card stack">
+      <h3>Signup Allowlist</h3>
+      <div class="grid cols-4">
+        <label>Email
+          <input id="allow-email" type="email" placeholder="dev@company.com" />
+        </label>
+        <label>Full Name
+          <input id="allow-name" placeholder="Developer Name" />
+        </label>
+        <label>Role
+          <select id="allow-role">
+            <option>developer</option>
+            <option>viewer</option>
+            <option>admin</option>
+          </select>
+        </label>
+        <label>Status
+          <select id="allow-active">
+            <option value="true">Active</option>
+            <option value="false">Inactive</option>
+          </select>
+        </label>
+      </div>
+      <div class="row">
+        <button class="btn" id="btn-upsert-allow">Upsert Allowlist</button>
+        <input id="allow-toggle-id" type="number" placeholder="Allowlist ID" />
+        <button class="btn btn-secondary" id="btn-enable-allow">Enable</button>
+        <button class="btn btn-danger" id="btn-disable-allow">Disable</button>
+        <button class="btn btn-secondary" id="btn-reload-allow">Reload</button>
+      </div>
+      <div class="table-wrap"><table id="tbl-allowlist"></table></div>
+    </div>
+  </template>
+
+  <div id="run-modal" class="run-modal hidden" aria-hidden="true">
+    <div class="run-modal-backdrop"></div>
+    <div class="run-modal-panel card">
+      <div class="row row-space">
+        <div>
+          <h3 id="run-modal-title">Execution</h3>
+          <p id="run-modal-subtitle" class="muted mono">Preparing run...</p>
+        </div>
+        <div class="row">
+          <span id="run-modal-status" class="status-pill idle">Status: idle</span>
+          <button class="btn btn-danger" id="run-modal-stop">Stop</button>
+          <button class="btn btn-secondary" id="run-modal-close">Close</button>
+        </div>
+      </div>
+      <div class="execution-summary">
+        <div class="execution-summary-card">
+          <p class="execution-summary-label">Current phase</p>
+          <h4 id="run-modal-phase">Preparing</h4>
+        </div>
+        <div class="execution-summary-card">
+          <p class="execution-summary-label">Completion</p>
+          <h4 id="run-modal-result">Waiting</h4>
+        </div>
+        <div class="execution-summary-card">
+          <p class="execution-summary-label">Operator note</p>
+          <h4 id="run-modal-note">Stay on this screen</h4>
+        </div>
+      </div>
+      <div id="run-modal-banner" class="run-banner hidden"></div>
+      <div class="stack">
+        <progress id="run-modal-progress" value="0" max="100"></progress>
+        <p id="run-modal-progress-label" class="muted mono">Waiting for the first test to settle.</p>
+      </div>
+      <pre id="run-modal-output" class="codebox modal-codebox">No execution output yet.</pre>
+    </div>
+  </div>
+
+  <aside id="test-drawer" class="drawer">
+    <div class="drawer-head">
+      <h3 id="selected-test-title">Selected Test</h3>
+      <button class="btn btn-secondary" id="drawer-close">Close</button>
+    </div>
+    <div class="stack">
+      <pre id="selected-test-script" class="codebox">Click a test row to view script.</pre>
+      <div class="execution-summary-card">
+        <p class="execution-summary-label">Synopsis</p>
+        <h4 id="selected-test-synopsis">No synopsis written for this test case yet.</h4>
+      </div>
+      <p id="test-editor-note" class="muted mono">Read-only preview.</p>
+      <div id="test-editor-actions" class="row hidden">
+        <button class="btn" id="btn-save-test-case">Save Test Case</button>
+        <button class="btn btn-secondary" id="btn-toggle-test-case">Toggle Active</button>
+      </div>
+      <div id="test-editor-form" class="stack hidden">
+        <div class="grid cols-2">
+          <label>Test ID
+            <input id="tc-id" type="number" placeholder="Auto on create" disabled />
+          </label>
+          <label>Execution Mode
+            <select id="tc-execution-mode">
+              <option value="SQL_SCRIPT">SQL_SCRIPT</option>
+              <option value="GATEWAY_CONFIG">GATEWAY_CONFIG</option>
+            </select>
+          </label>
+          <label>Module
+            <input id="tc-module" placeholder="LMS" />
+          </label>
+          <label>Functionality Name
+            <input id="tc-functionality-name" placeholder="Describe the test case" />
+          </label>
+          <label>Severity
+            <select id="tc-severity">
+              <option value="">None</option>
+              <option>LOW</option>
+              <option>MODERATE</option>
+              <option>HIGH</option>
+              <option>VERY HIGH</option>
+              <option>CRITICAL</option>
+            </select>
+          </label>
+          <label>Active
+            <select id="tc-is-active">
+              <option value="true">true</option>
+              <option value="false">false</option>
+            </select>
+          </label>
+          <label>Synopsis
+            <input id="tc-synopsis" placeholder="Short note (optional)" />
+          </label>
+          <label>Target Config ID
+            <input id="tc-target-config-id" placeholder="Required for gateway tests" />
+          </label>
+          <label>Gateway Endpoint
+            <input id="tc-gateway-endpoint" placeholder="/functions/v1/..." />
+          </label>
+          <label>Test Tags (JSON array)
+            <input id="tc-test-tags" placeholder='["gateway","lms"]' />
+          </label>
+        </div>
+        <label>Test SQL Script
+          <textarea id="tc-test-sql-script" rows="6" placeholder="SQL script for SQL_SCRIPT tests"></textarea>
+        </label>
+        <label>Expected Result (JSON)
+          <textarea id="tc-expected-result" rows="6" placeholder='{"success": true}'></textarea>
+        </label>
+        <label>Gateway Payload Template (JSON object)
+          <textarea id="tc-gateway-payload-template" rows="6" placeholder='{"emp_code":"EMP001"}'></textarea>
+        </label>
+        <label>Correction Note (JSON object)
+          <textarea id="tc-correction-note" rows="4" placeholder='{"note":"optional"}'></textarea>
+        </label>
+      </div>
+    </div>
+  </aside>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
