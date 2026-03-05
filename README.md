@@ -16,7 +16,7 @@ A lightweight, fully functional frontend for the simulator backend.
 2. Enter `Supabase URL` + `Publishable/Anon key`.
 3. Save connection.
 4. Use left navigation.
-5. If not logged in, you will be redirected to `auth.html`.
+5. If not logged in, you will be redirected to `/auth/`.
 
 Local config file:
 - This project reads Supabase runtime config from `config.js`.
@@ -46,12 +46,12 @@ Local config file:
 ### Notes
 - `wrangler.toml` is included with `pages_build_output_dir = "."`.
 - `_headers` adds baseline security headers.
-- `_redirects` maps `/` and `/auth` cleanly to static HTML files.
+- `_redirects` keeps root routing simple for static pages.
 
 ## Auth Flow
 - Signup is allowlist-based.
 - Main developer must insert email first in `public.sim_signup_allowlist`.
-- User opens `auth.html`, enters URL/key/email/password.
+- User opens `/auth/`, enters URL/key/email/password.
 - `Check Eligibility` verifies allowlist match.
 - `Sign Up` triggers Supabase confirmation email for allowlisted email.
 - After confirmation, user can `Login` and use `index.html`.

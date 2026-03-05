@@ -134,7 +134,7 @@ async function initAuthSession() {
   state.auth.session = data?.session ?? null;
 
   if (!state.auth.session) {
-    window.location.replace("/auth");
+    window.location.replace("/auth/");
     return;
   }
 
@@ -142,7 +142,7 @@ async function initAuthSession() {
   if (logoutBtn) {
     logoutBtn.onclick = async () => {
       await state.supabase.auth.signOut();
-      window.location.replace("/auth");
+      window.location.replace("/auth/");
     };
   }
 }
@@ -2753,7 +2753,7 @@ function getSettingsGatewayWorkerId() {
 function handleUnauthorized() {
   if (!state.supabase) return;
   state.auth.session = null;
-  window.location.replace("/auth");
+  window.location.replace("/auth/");
 }
 
 async function ensureSettingsGatewaySuite() {

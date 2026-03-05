@@ -93,7 +93,7 @@ async function signUp() {
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin + '/auth' },
+      options: { emailRedirectTo: window.location.origin + '/auth/' },
     });
     if (error) throw error;
 
