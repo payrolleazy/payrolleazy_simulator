@@ -9,11 +9,18 @@ init();
 
 async function init() {
   if (conn.url && conn.key) {
-    const client = window.supabase.createClient(conn.url, conn.key);
-    const { data } = await client.auth.getSession();
-    if (data?.session) {
-      window.location.href = 'index.html';
-      return;
+    try {
+      const client = window.supabase.createClient(conn.url, conn.key);
+      const { data } = await client.auth.getSession();
+      if (data?.session?.access_token) {
+        const { data: userData, error: userError } = await client.auth.getUser();
+        if (!userError && userData?.user) {
+          window.location.replace('index.html');
+          return;
+        }
+      }
+    } catch {
+      // Stay on auth page if session validation fails.
     }
   }
 
