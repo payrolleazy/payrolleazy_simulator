@@ -18,6 +18,30 @@ A lightweight, fully functional frontend for the simulator backend.
 4. Use left navigation.
 5. If not logged in, you will be redirected to `auth.html`.
 
+## Cloudflare Deployment
+
+### Option A: Cloudflare Pages (Git-integrated, recommended)
+1. Push this repo to GitHub.
+2. In Cloudflare Dashboard: `Workers & Pages` -> `Create` -> `Pages` -> `Connect to Git`.
+3. Select repo: `payrolleazy/payrolleazy_simulator`.
+4. Build settings:
+   - Framework preset: `None`
+   - Build command: *(leave empty)*
+   - Build output directory: `.`
+5. Deploy from branch: `main`.
+
+### Option B: Wrangler CLI
+1. Install wrangler: `npm i -g wrangler`
+2. Login: `wrangler login`
+3. Deploy:
+   - `wrangler pages project create payrolleazy-simulator-ui` (one-time)
+   - `wrangler pages deploy .`
+
+### Notes
+- `wrangler.toml` is included with `pages_build_output_dir = "."`.
+- `_headers` adds baseline security headers.
+- `_redirects` maps `/` and `/auth` cleanly to static HTML files.
+
 ## Auth Flow
 - Signup is allowlist-based.
 - Main developer must insert email first in `public.sim_signup_allowlist`.
