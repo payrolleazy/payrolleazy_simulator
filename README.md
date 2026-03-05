@@ -22,7 +22,7 @@ Local config file:
 - This project reads Supabase runtime config from `config.js`.
 - For local manual run, copy `config.example.js` to `config.js` and set:
   - `SUPABASE_URL`
-  - `SUPABASE_PUBLISHABLE_KEY`
+  - `SUPABASE_ANON_KEY`
 - Never put `service_role` key in frontend config.
 
 ## Cloudflare Deployment
@@ -37,19 +37,15 @@ Local config file:
    - Build output directory: `.`
 5. Deploy from branch: `main`.
 6. In Pages -> `Settings` -> `Environment variables`, add:
-   - `SUPABASE_URL` = `https://<your-project-ref>.supabase.co`
-   - `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_...` (or anon publishable key)
+   - `NEXT_PUBLIC_SUPABASE_URL` = `https://<your-project-ref>.supabase.co`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJ...` (anon key)
 7. Add these vars in both `Production` and `Preview`.
-
-Accepted fallback names:
-- URL: `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`
-- Key: `SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
 
 ### Option B: Wrangler CLI
 1. Install wrangler: `npm i -g wrangler`
 2. Login: `wrangler login`
 3. Generate runtime config:
-   - `SUPABASE_URL=... SUPABASE_PUBLISHABLE_KEY=... npm run build:config`
+   - `NEXT_PUBLIC_SUPABASE_URL=... NEXT_PUBLIC_SUPABASE_ANON_KEY=... npm run build:config`
 4. Deploy:
    - `wrangler pages project create payrolleazy-simulator-ui` (one-time)
    - `wrangler pages deploy .`
