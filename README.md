@@ -18,6 +18,13 @@ A lightweight, fully functional frontend for the simulator backend.
 4. Use left navigation.
 5. If not logged in, you will be redirected to `auth.html`.
 
+Local config file:
+- This project reads Supabase runtime config from `config.js`.
+- For local manual run, copy `config.example.js` to `config.js` and set:
+  - `SUPABASE_URL`
+  - `SUPABASE_PUBLISHABLE_KEY`
+- Never put `service_role` key in frontend config.
+
 ## Cloudflare Deployment
 
 ### Option A: Cloudflare Pages (Git-integrated, recommended)
@@ -26,14 +33,20 @@ A lightweight, fully functional frontend for the simulator backend.
 3. Select repo: `payrolleazy/payrolleazy_simulator`.
 4. Build settings:
    - Framework preset: `None`
-   - Build command: *(leave empty)*
+   - Build command: `npm run build:config`
    - Build output directory: `.`
 5. Deploy from branch: `main`.
+6. In Pages -> `Settings` -> `Environment variables`, add:
+   - `SUPABASE_URL` = `https://<your-project-ref>.supabase.co`
+   - `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_...` (or anon publishable key)
+7. Add these vars in both `Production` and `Preview`.
 
 ### Option B: Wrangler CLI
 1. Install wrangler: `npm i -g wrangler`
 2. Login: `wrangler login`
-3. Deploy:
+3. Generate runtime config:
+   - `SUPABASE_URL=... SUPABASE_PUBLISHABLE_KEY=... npm run build:config`
+4. Deploy:
    - `wrangler pages project create payrolleazy-simulator-ui` (one-time)
    - `wrangler pages deploy .`
 
@@ -41,6 +54,7 @@ A lightweight, fully functional frontend for the simulator backend.
 - `wrangler.toml` is included with `pages_build_output_dir = "."`.
 - `_headers` adds baseline security headers.
 - `_redirects` maps `/` and `/auth` cleanly to static HTML files.
+- `scripts/generate-config.mjs` creates `config.js` from environment variables during build.
 
 ## Auth Flow
 - Signup is allowlist-based.

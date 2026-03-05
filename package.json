@@ -1,0 +1,9 @@
+{
+  "name": "payrolleazy-simulator-ui",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:config": "node scripts/generate-config.mjs"
+  }
+}
+
