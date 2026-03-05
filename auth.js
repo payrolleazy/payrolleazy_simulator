@@ -15,7 +15,7 @@ async function init() {
       if (data?.session?.access_token) {
         const { data: userData, error: userError } = await client.auth.getUser();
         if (!userError && userData?.user) {
-          window.location.replace('index.html');
+          window.location.replace('/');
           return;
         }
       }
@@ -93,7 +93,7 @@ async function signUp() {
     const { data, error } = await client.auth.signUp({
       email,
       password,
-      options: { emailRedirectTo: window.location.origin + '/auth.html' },
+      options: { emailRedirectTo: window.location.origin + '/auth' },
     });
     if (error) throw error;
 
@@ -101,7 +101,7 @@ async function signUp() {
       out('Signup initiated. Check your email and confirm, then login.');
     } else {
       out('Signup successful. Redirecting...');
-      window.location.href = 'index.html';
+      window.location.replace('/');
     }
   } catch (e) {
     out(`Signup failed: ${e.message}`);
@@ -115,7 +115,7 @@ async function login() {
     const { error } = await client.auth.signInWithPassword({ email, password });
     if (error) throw error;
     out('Login successful. Redirecting...');
-    window.location.href = 'index.html';
+    window.location.replace('/');
   } catch (e) {
     out(`Login failed: ${e.message}`);
   }
