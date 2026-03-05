@@ -41,6 +41,10 @@ Local config file:
    - `SUPABASE_PUBLISHABLE_KEY` = `sb_publishable_...` (or anon publishable key)
 7. Add these vars in both `Production` and `Preview`.
 
+Accepted fallback names:
+- URL: `SUPABASE_URL` or `NEXT_PUBLIC_SUPABASE_URL`
+- Key: `SUPABASE_PUBLISHABLE_KEY` or `SUPABASE_ANON_KEY` or `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` or `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+
 ### Option B: Wrangler CLI
 1. Install wrangler: `npm i -g wrangler`
 2. Login: `wrangler login`
