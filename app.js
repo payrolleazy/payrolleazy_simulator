@@ -133,8 +133,17 @@ async function initAuthSession() {
   const { data } = await state.supabase.auth.getSession();
   state.auth.session = data?.session ?? null;
 
-  if (!state.auth.session) {
-    window.location.href = "auth.html";
+  if (!state.auth.session || !state.auth.session.access_token) {
+    await state.supabase.auth.signOut();
+    window.location.replace("auth.html");
+    return;
+  }
+
+  // Verify the session is actually valid with the server
+  const { data: userData, error: userError } = await state.supabase.auth.getUser();
+  if (userError || !userData?.user) {
+    await state.supabase.auth.signOut();
+    window.location.replace("auth.html");
     return;
   }
 
