@@ -336,6 +336,46 @@ tr:hover { background: #11234b66; }
   flex: 1 1 260px;
 }
 
+.inline-details,
+.card details {
+  border: 1px solid #294881;
+  border-radius: 12px;
+  padding: 12px;
+  background: linear-gradient(180deg, #0d1836, #0a1430);
+}
+
+.inline-details[open],
+.card details[open] {
+  display: grid;
+  gap: 12px;
+}
+
+.inline-details summary,
+.details-summary {
+  cursor: pointer;
+  color: #d9e6ff;
+  font-weight: 600;
+  list-style: none;
+}
+
+.inline-details summary::-webkit-details-marker,
+.details-summary::-webkit-details-marker {
+  display: none;
+}
+
+.inline-details summary::after,
+.details-summary::after {
+  content: "Show";
+  float: right;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.inline-details[open] summary::after,
+details[open] > .details-summary::after {
+  content: "Hide";
+}
+
 .status-running-pulse {
   color: #9fc4ff;
   animation: running-pulse 1.2s ease-in-out infinite;

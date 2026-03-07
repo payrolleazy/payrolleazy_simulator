@@ -2450,6 +2450,40 @@ async function renderDevopsGate() {
     }
   };
 
+  const formatTimestamp = (value) => {
+    if (!value) return "-";
+    const dt = new Date(value);
+    if (Number.isNaN(dt.getTime())) return String(value);
+    return dt.toLocaleString();
+  };
+
+  const setPolicySummary = (policy = {}) => {
+    const mode = humanizeStatus(policy.execution_mode || "GATEWAY_CONFIG");
+    const passRate = Number(policy.min_pass_rate_pct ?? 100);
+    const failed = Number(policy.max_failed_jobs ?? 0);
+    const dead = Number(policy.max_dead_jobs ?? 0);
+    const runtime = Number(policy.max_suite_runtime_seconds ?? 3600);
+    const pendingRule = Boolean(policy.require_zero_pending) ? "zero pending required" : "pending jobs allowed";
+    if ($("#devops-policy-headline")) {
+      $("#devops-policy-headline").textContent = `${mode} | pass >= ${passRate.toFixed(2)}% | failed <= ${failed} | dead <= ${dead}`;
+    }
+    if ($("#devops-run-explainer")) {
+      $("#devops-run-explainer").textContent = `${pendingRule} | max runtime ${runtime}s | stale recovery ${Boolean(policy.auto_requeue_stale_jobs) ? "on" : "off"}`;
+    }
+  };
+
+  const setSelectedRunSummary = (gateRun = {}) => {
+    const releaseRef = String(gateRun?.release_ref || "").trim() || "No release ref";
+    const module = String(gateRun?.module || "").trim() || "All modules";
+    const mode = humanizeStatus(gateRun?.execution_mode || "-");
+    const reason = String(gateRun?.gate_reason || "").trim() || "No gate reason recorded.";
+    if ($("#devops-selected-release-ref")) $("#devops-selected-release-ref").textContent = releaseRef;
+    if ($("#devops-selected-scope")) $("#devops-selected-scope").textContent = `${module} | ${mode}`;
+    if ($("#devops-selected-reason")) $("#devops-selected-reason").textContent = reason;
+    if ($("#devops-selected-started-at")) $("#devops-selected-started-at").textContent = formatTimestamp(gateRun?.started_at);
+    if ($("#devops-selected-completed-at")) $("#devops-selected-completed-at").textContent = formatTimestamp(gateRun?.completed_at);
+  };
+
   const setSelectedKpis = (gateRun = {}) => {
     const status = String(gateRun?.status || "-");
     const passRateRaw = gateRun?.pass_rate_pct;
@@ -2468,6 +2502,7 @@ async function renderDevopsGate() {
     if ($("#devops-kpi-pass-rate")) $("#devops-kpi-pass-rate").textContent = passRate;
     if ($("#devops-kpi-failed-dead")) $("#devops-kpi-failed-dead").textContent = `${failedJobs} / ${deadJobs}`;
     if ($("#devops-kpi-pending")) $("#devops-kpi-pending").textContent = String(pendingJobs);
+    setSelectedRunSummary(gateRun);
   };
 
   const applyPolicyToForm = (policy = {}) => {
@@ -2505,6 +2540,7 @@ async function renderDevopsGate() {
     }
     const policy = policyRes?.policy || {};
     applyPolicyToForm(policy);
+    setPolicySummary(policy);
     return policyRes;
   };
 
@@ -2627,6 +2663,8 @@ async function renderDevopsGate() {
     setOutput("Admin role required for DevOps gate policy updates and run execution.");
   }
 
+  setSelectedKpis({});
+
   $("#devops-reload-policy").onclick = async () => {
     try {
       const res = await loadPolicy();
@@ -2644,6 +2682,7 @@ async function renderDevopsGate() {
       if (res?.success === false) throw new Error(res?.error || "Policy save failed");
       setOutput(res);
       applyPolicyToForm(res?.policy || {});
+      setPolicySummary(res?.policy || payload);
     } catch (e) {
       setOutput(`Policy save failed: ${e.message}`);
     }

@@ -415,41 +415,143 @@ Gateway Test
     <div class="grid cols-2">
       <div class="card stack">
         <div class="row row-space">
-          <h3>Gate Policy</h3>
-          <div class="row">
-            <button class="btn btn-secondary" id="devops-reload-policy">Reload Policy</button>
-            <button class="btn" id="devops-save-policy">Save Policy</button>
+          <div>
+            <h3>Run Release Gate</h3>
+            <p class="muted mono">Start a gate run, let the existing simulator suite finish, then read the verdict here.</p>
           </div>
+          <button class="btn" id="devops-start-run">Start Run</button>
         </div>
-        <p class="muted mono">Release gate thresholds and operational controls used when creating a DevOps gate run.</p>
         <div class="grid cols-2">
+          <label>Module (optional)
+            <input id="devops-run-module" placeholder="LMS / AMS / EOAP / WCM" />
+          </label>
           <label>Execution Mode
-            <select id="devops-policy-mode">
+            <select id="devops-run-mode">
+              <option value="">Use policy default</option>
               <option value="GATEWAY_CONFIG">GATEWAY_CONFIG</option>
               <option value="SQL_SCRIPT">SQL_SCRIPT</option>
               <option value="ALL">ALL</option>
             </select>
           </label>
-          <label>Minimum Pass Rate (%)
-            <input id="devops-policy-pass-rate" type="number" min="0" max="100" step="0.01" value="100" />
+          <label>Release Ref (optional)
+            <input id="devops-run-release-ref" placeholder="release-2026-03-05" />
           </label>
-          <label>Maximum Failed Jobs
-            <input id="devops-policy-max-failed" type="number" min="0" value="0" />
+          <label>Source
+            <input id="devops-run-source" value="UI_SIMULATOR" />
           </label>
-          <label>Maximum Dead Jobs
-            <input id="devops-policy-max-dead" type="number" min="0" value="0" />
-          </label>
-          <label>Max Suite Runtime (seconds)
-            <input id="devops-policy-runtime" type="number" min="60" value="3600" />
-          </label>
+        </div>
+        <details class="inline-details">
+          <summary>Advanced Run Options</summary>
+          <div class="stack">
+            <label>Run Metadata (JSON object)
+              <textarea id="devops-run-metadata" rows="4" placeholder='{"initiator":"ui"}'></textarea>
+            </label>
+            <div class="row">
+              <label class="devops-inline-label">Selected Gate Run ID
+                <input id="devops-selected-gate-id" placeholder="auto from latest row click" />
+              </label>
+              <button class="btn btn-secondary" id="devops-load-selected">Load Selected</button>
+              <button class="btn btn-secondary" id="devops-refresh-selected">Refresh Verdict</button>
+            </div>
+          </div>
+        </details>
+        <div class="execution-summary">
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Policy Snapshot</p>
+            <h4 id="devops-policy-headline">Loading policy...</h4>
+          </div>
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Run Behavior</p>
+            <h4 id="devops-run-explainer">Creates a suite and evaluates its final verdict.</h4>
+          </div>
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Export Coverage</p>
+            <h4 id="devops-export-note">Export tests are not a first-class gate lane yet.</h4>
+          </div>
+        </div>
+        <pre id="devops-output" class="codebox">No DevOps gate action yet.</pre>
+      </div>
+
+      <div class="card stack">
+        <div class="row row-space">
+          <div>
+            <h3>Current Verdict</h3>
+            <p class="muted mono">Shows the latest selected gate run and why it passed or failed.</p>
+          </div>
+          <button class="btn btn-secondary" id="devops-reload-runs">Reload Runs</button>
+        </div>
+        <div class="grid cols-4 kpi-grid">
+          <article class="card kpi"><p>Selected Status</p><h4 id="devops-kpi-status">-</h4></article>
+          <article class="card kpi"><p>Pass Rate</p><h4 id="devops-kpi-pass-rate">-</h4></article>
+          <article class="card kpi"><p>Failed / Dead</p><h4 id="devops-kpi-failed-dead">-</h4></article>
+          <article class="card kpi"><p>Pending</p><h4 id="devops-kpi-pending">-</h4></article>
+        </div>
+        <div class="grid cols-2">
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Release Ref</p>
+            <h4 id="devops-selected-release-ref">-</h4>
+          </div>
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Execution Scope</p>
+            <h4 id="devops-selected-scope">-</h4>
+          </div>
+        </div>
+        <div class="execution-summary-card">
+          <p class="execution-summary-label">Gate Reason</p>
+          <h4 id="devops-selected-reason">No gate run selected yet.</h4>
+        </div>
+        <div class="grid cols-2">
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Started</p>
+            <h4 id="devops-selected-started-at">-</h4>
+          </div>
+          <div class="execution-summary-card">
+            <p class="execution-summary-label">Completed</p>
+            <h4 id="devops-selected-completed-at">-</h4>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <details class="card stack" open>
+      <summary class="details-summary">Gate Policy</summary>
+      <p class="muted mono">Release thresholds and maintenance controls. Backend logic stays unchanged; this panel only edits policy values.</p>
+      <div class="row">
+        <button class="btn btn-secondary" id="devops-reload-policy">Reload Policy</button>
+        <button class="btn" id="devops-save-policy">Save Policy</button>
+      </div>
+      <div class="grid cols-2">
+        <label>Execution Mode
+          <select id="devops-policy-mode">
+            <option value="GATEWAY_CONFIG">GATEWAY_CONFIG</option>
+            <option value="SQL_SCRIPT">SQL_SCRIPT</option>
+            <option value="ALL">ALL</option>
+          </select>
+        </label>
+        <label>Minimum Pass Rate (%)
+          <input id="devops-policy-pass-rate" type="number" min="0" max="100" step="0.01" value="100" />
+        </label>
+        <label>Maximum Failed Jobs
+          <input id="devops-policy-max-failed" type="number" min="0" value="0" />
+        </label>
+        <label>Maximum Dead Jobs
+          <input id="devops-policy-max-dead" type="number" min="0" value="0" />
+        </label>
+        <label>Max Suite Runtime (seconds)
+          <input id="devops-policy-runtime" type="number" min="60" value="3600" />
+        </label>
+        <label>Require Zero Pending
+          <select id="devops-policy-zero-pending">
+            <option value="true">true</option>
+            <option value="false">false</option>
+          </select>
+        </label>
+      </div>
+      <details class="inline-details">
+        <summary>Advanced Maintenance Controls</summary>
+        <div class="grid cols-2">
           <label>Stale Job Minutes
             <input id="devops-policy-stale-minutes" type="number" min="1" max="1440" value="15" />
-          </label>
-          <label>Require Zero Pending
-            <select id="devops-policy-zero-pending">
-              <option value="true">true</option>
-              <option value="false">false</option>
-            </select>
           </label>
           <label>Auto Requeue Stale Jobs
             <select id="devops-policy-auto-requeue">
@@ -470,53 +572,8 @@ Gateway Test
         <label>Policy Metadata (JSON object)
           <textarea id="devops-policy-metadata" rows="4" placeholder='{"owner":"qa-devops"}'></textarea>
         </label>
-      </div>
-
-      <div class="card stack">
-        <div class="row row-space">
-          <h3>Start Gate Run</h3>
-          <button class="btn" id="devops-start-run">Start Run</button>
-        </div>
-        <p class="muted mono">Create a run, execute queue jobs using existing gateway workflow, then evaluate final gate verdict.</p>
-        <div class="grid cols-2">
-          <label>Source
-            <input id="devops-run-source" value="UI_SIMULATOR" />
-          </label>
-          <label>Module (optional)
-            <input id="devops-run-module" placeholder="LMS / AMS / EOAP" />
-          </label>
-          <label>Execution Mode Override (optional)
-            <select id="devops-run-mode">
-              <option value="">Use policy mode</option>
-              <option value="GATEWAY_CONFIG">GATEWAY_CONFIG</option>
-              <option value="SQL_SCRIPT">SQL_SCRIPT</option>
-              <option value="ALL">ALL</option>
-            </select>
-          </label>
-          <label>Release Ref (optional)
-            <input id="devops-run-release-ref" placeholder="release-2026-03-05" />
-          </label>
-        </div>
-        <label>Run Metadata (JSON object)
-          <textarea id="devops-run-metadata" rows="4" placeholder='{"initiator":"ui"}'></textarea>
-        </label>
-        <div class="row">
-          <label class="devops-inline-label">Selected Gate Run ID
-            <input id="devops-selected-gate-id" placeholder="auto from latest row click" />
-          </label>
-          <button class="btn btn-secondary" id="devops-load-selected">Load Selected</button>
-          <button class="btn btn-secondary" id="devops-refresh-selected">Refresh Verdict</button>
-        </div>
-        <pre id="devops-output" class="codebox">No DevOps gate action yet.</pre>
-      </div>
-    </div>
-
-    <div class="grid cols-4 kpi-grid">
-      <article class="card kpi"><p>Selected Status</p><h4 id="devops-kpi-status">-</h4></article>
-      <article class="card kpi"><p>Pass Rate</p><h4 id="devops-kpi-pass-rate">-</h4></article>
-      <article class="card kpi"><p>Failed / Dead</p><h4 id="devops-kpi-failed-dead">-</h4></article>
-      <article class="card kpi"><p>Pending</p><h4 id="devops-kpi-pending">-</h4></article>
-    </div>
+      </details>
+    </details>
 
     <div class="card stack">
       <div class="row row-space">
@@ -549,13 +606,11 @@ Gateway Test
       </div>
     </div>
 
-    <div class="card stack">
-      <div class="row row-space">
-        <h3>Gate Run Detail</h3>
-        <span class="muted mono">Click any gate run row to inspect gate, suite, and checkpoint payloads.</span>
-      </div>
+    <details class="card stack">
+      <summary class="details-summary">Raw Gate Run Detail</summary>
+      <p class="muted mono">Click any gate run row to inspect the full gate, suite, and checkpoint payloads.</p>
       <pre id="devops-gate-detail" class="codebox">No gate run selected.</pre>
-    </div>
+    </details>
   </template>
 
   <template id="settings-template">
